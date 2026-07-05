@@ -9,6 +9,8 @@ gi.require_version("Gtk", "3.0")
 from datetime import datetime
 from math import log
 
+import subprocess
+
 from gi.repository import GdkPixbuf, Gio, GLib, Gtk, Pango
 from jinja2 import Environment
 
@@ -41,6 +43,8 @@ class BasePanel(ScreenPanel):
         self.current_extruder = None
         self.last_usage_report = datetime.now()
         self.usage_report = 0
+        self.cpu_usage = 0
+        self.ram_usage = 0
         # Action bar buttons
         self.abscale = self.bts * 1.1
         self.control["back"] = self._gtk.Button("back", scale=self.abscale)
@@ -130,8 +134,19 @@ class BasePanel(ScreenPanel):
         # Main layout
         self.main_grid = Gtk.Grid()
         self._build_main_grid()
-
         self.update_time()
+
+    def get_ip(self):
+        try:
+            ip = subprocess.check_output(
+                "hostname -I | awk '{print $1}'",
+                shell=True,
+                text=True
+            ).strip()
+            return ip if ip else "No IP"
+        except Exception:
+            return "No IP"
+
 
     def _reconfigure_main_grid(self):
         self.main_grid.remove(self.titlebar)
@@ -452,6 +467,8 @@ class BasePanel(ScreenPanel):
         if action == "notify_proc_stat_update":
             cpu = data["system_cpu_usage"]["cpu"]
             memory = (data["system_memory"]["used"] / data["system_memory"]["total"]) * 100
+            self.cpu_usage = cpu
+            self.ram_usage = memory
             error = "message_popup_error"
             ctx = self.titlebar.get_style_context()
             msg = f"CPU: {cpu:2.0f}%    RAM: {memory:2.0f}%"
@@ -647,13 +664,19 @@ class BasePanel(ScreenPanel):
     def update_time(self):
         now = datetime.now()
         confopt = self._config.get_main_config().getboolean("24htime", True)
+
         if now.minute != self.time_min or self.time_format != confopt:
             if confopt:
-                self.control["time"].set_text(f"{now:%H:%M }")
+                self.control["time"].set_text(f"{now:%H:%M}")
             else:
                 self.control["time"].set_text(f"{now:%I:%M %p}")
             self.time_min = now.minute
             self.time_format = confopt
+
+        self.titlelbl.set_label(
+            f"🌐 {self.get_ip()} │ 🧠 {self.cpu_usage:.0f}% │ 💾 {self.ram_usage:.0f}%"
+        )
+
         return True
 
     def get_battery_icon(self, charge: float, plugged: bool):

@@ -223,7 +223,12 @@ class Printer:
         return heaters
 
     def get_temp_fans(self):
-        return self.get_config_section_list("temperature_fan")
+        fans = self.get_config_section_list("temperature_fan")
+        # Hide temperature_fan devices from KlipperScreen graphs/lists
+        return [
+            f for f in fans
+            if f not in ("temperature_fan MCU_fan", "temperature_fan fanX")
+        ]
 
     def get_temp_sensors(self):
         return self.get_config_section_list("temperature_sensor")
@@ -390,6 +395,12 @@ class Printer:
     def init_temp_store(self, tempstore):
         if self.tempstore and set(self.tempstore) != set(tempstore):
             logging.debug("Tempstore has changed")
+        # Remove unwanted temperature_fan devices from tempstore
+        tempstore = {
+            k: v for k, v in tempstore.items()
+            if k not in ("temperature_fan MCU_fan", "temperature_fan fanX")
+        }
+
         existing_devices = set(self.tempstore) if self.tempstore else set()
         new_devices = set(tempstore)
         for device in new_devices - existing_devices:

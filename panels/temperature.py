@@ -344,10 +344,8 @@ class Panel(ScreenPanel):
             class_name = f"graph_label_sensor_{self.h}"
             dev_type = "sensor"
         elif device.startswith("temperature_fan"):
-            self.f += 1
-            image = "fan"
-            class_name = f"graph_label_fan_{self.f}"
-            dev_type = "fan"
+            # Nie pokazuj FanX ani MCU Fan na liście i wykresie
+            return False
         elif self._config.get_main_config().getboolean("only_heaters", False):
             return False
         else:
@@ -356,7 +354,21 @@ class Panel(ScreenPanel):
             class_name = f"graph_label_sensor_{self.h}"
             dev_type = "sensor"
 
-        rgb = self._gtk.get_temp_color(dev_type)
+        # Custom graph colors
+        if device.startswith("extruder"):
+            rgb = [1.00, 0.25, 0.25]      # red
+        elif device == "heater_bed":
+            rgb = [0.23, 0.51, 0.96]      # blue
+        elif device == "temperature_sensor Host_temp":
+            rgb = [0.66, 0.33, 0.97]      # purple
+        elif device == "temperature_sensor Toolhead_Temp":
+            rgb = [0.96, 0.62, 0.04]      # orange
+        elif device == "temperature_sensor btt_eddy_mcu":
+            rgb = [0.00, 0.82, 0.82]      # cyan
+        elif device == "temperature_probe btt_eddy":
+            rgb = [0.15, 0.80, 0.30]      # green
+        else:
+            rgb = self._gtk.get_temp_color(dev_type)
 
         name = self._gtk.Button(
             image, self.prettify(devname), None, self.bts, Gtk.PositionType.LEFT, 1
