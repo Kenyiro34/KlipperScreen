@@ -138,15 +138,37 @@ class BasePanel(ScreenPanel):
 
     def get_ip(self):
         try:
-            ip = subprocess.check_output(
-                "hostname -I | awk '{print $1}'",
+            result = subprocess.check_output(
+                "ip -4 -o addr show",
                 shell=True,
                 text=True
-            ).strip()
-            return ip if ip else "No IP"
+            )
+
+            eth = None
+            wlan = None
+
+            for line in result.splitlines():
+                parts = line.split()
+                iface = parts[1]
+                ip = parts[3].split("/")[0]
+
+                if iface.startswith(("eth", "en")):
+                    eth = ip
+                elif iface.startswith(("wlan", "wl")):
+                    wlan = ip
+
+            ips = []
+
+            if eth:
+                ips.append(f"E:{eth}")
+
+            if wlan:
+                ips.append(f"W:{wlan}")
+
+            return "  ".join(ips) if ips else "No IP"
+
         except Exception:
             return "No IP"
-
 
     def _reconfigure_main_grid(self):
         self.main_grid.remove(self.titlebar)
@@ -674,7 +696,7 @@ class BasePanel(ScreenPanel):
             self.time_format = confopt
 
         self.titlelbl.set_label(
-            f"🌐 {self.get_ip()} │ 🧠 {self.cpu_usage:.0f}% │ 💾 {self.ram_usage:.0f}%"
+            f"{self.get_ip()}  CPU:{self.cpu_usage:.0f}%  RAM:{self.ram_usage:.0f}%"
         )
 
         return True
